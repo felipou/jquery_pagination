@@ -53,7 +53,15 @@
 		this.opts = opts;
 		this.pc = new $.PaginationCalculator(maxentries, opts);
 	}
-	$.extend($.PaginationRenderers.defaultRenderer.prototype, {
+
+	$.PaginationRenderers.bootstrapRenderer = function(maxentries, opts) {
+		this.maxentries = maxentries;
+		this.opts = opts;
+		this.bootstrap = true;
+		this.pc = new $.PaginationCalculator(maxentries, opts);
+	}
+
+	var rendererDefaultExtension = {
 		/**
 		 * Helper function for generating a single link (or a span tag if it's the current page)
 		 * @param {Number} page_id The page id for the new item
@@ -81,7 +89,11 @@
 		appendRange:function(container, current_page, start, end, opts) {
 			var i;
 			for(i=start; i<end; i++) {
-				this.createLink(i, current_page, opts).appendTo(container);
+				if (this.bootstrap) {
+					$("<li></li>").appendTo(container).append( this.createLink(i, current_page, opts) );
+				} else {
+					this.createLink(i, current_page, opts).appendTo(container);
+				}
 			}
 		},
 		getLinks:function(current_page, eventHandler) {
@@ -89,10 +101,20 @@
 				interval = this.pc.getInterval(current_page),
 				np = this.pc.numPages(),
 				fragment = $("<div class='pagination'></div>");
+
+			if (this.bootstrap) {
+				var fragmentContainer = fragment;
+				fragment = $("<ul></ul>");
+				fragmentContainer.append(fragment);
+			}
 			
 			// Generate "Previous"-Link
 			if(this.opts.prev_text && (current_page > 0 || this.opts.prev_show_always)){
-				fragment.append(this.createLink(current_page-1, current_page, {text:this.opts.prev_text, classes:"prev"}));
+				if (this.bootstrap) {
+					$("<li></li>").appendTo(fragment).append( this.createLink(current_page-1, current_page, {text:this.opts.prev_text, classes:"prev"}) );
+				} else {
+					fragment.append(this.createLink(current_page-1, current_page, {text:this.opts.prev_text, classes:"prev"}));
+				}
 			}
 			// Generate starting points
 			if (interval.start > 0 && this.opts.num_edge_entries > 0)
@@ -101,7 +123,11 @@
 				this.appendRange(fragment, current_page, 0, end, {classes:'sp'});
 				if(this.opts.num_edge_entries < interval.start && this.opts.ellipse_text)
 				{
-					$("<span>"+this.opts.ellipse_text+"</span>").appendTo(fragment);
+					if(this.bootstrap) {
+						$("<li></li>").appendTo(fragment).append( $("<span>"+this.opts.ellipse_text+"</span>") );
+					} else {
+						$("<span>"+this.opts.ellipse_text+"</span>").appendTo(fragment);
+					}
 				}
 			}
 			// Generate interval links
@@ -111,7 +137,11 @@
 			{
 				if(np-this.opts.num_edge_entries > interval.end && this.opts.ellipse_text)
 				{
-					$("<span>"+this.opts.ellipse_text+"</span>").appendTo(fragment);
+					if(this.bootstrap) {
+						$("<li></li>").appendTo(fragment).append( $("<span>"+this.opts.ellipse_text+"</span>") );
+					} else {
+						$("<span>"+this.opts.ellipse_text+"</span>").appendTo(fragment);
+					}
 				}
 				begin = Math.max(np-this.opts.num_edge_entries, interval.end);
 				this.appendRange(fragment, current_page, begin, np, {classes:'ep'});
@@ -119,12 +149,23 @@
 			}
 			// Generate "Next"-Link
 			if(this.opts.next_text && (current_page < np-1 || this.opts.next_show_always)){
-				fragment.append(this.createLink(current_page+1, current_page, {text:this.opts.next_text, classes:"next"}));
+				if(this.bootstrap) {
+					$("<li></li>").appendTo(fragment).append( this.createLink(current_page+1, current_page, {text:this.opts.next_text, classes:"next"}) );
+				} else {
+					fragment.append(this.createLink(current_page+1, current_page, {text:this.opts.next_text, classes:"next"}));
+				}
 			}
 			$('a', fragment).click(eventHandler);
+
+			if (this.bootstrap) {
+				fragment = fragmentContainer;
+			}
 			return fragment;
 		}
-	});
+	};
+
+	$.extend($.PaginationRenderers.defaultRenderer.prototype, rendererDefaultExtension);
+	$.extend($.PaginationRenderers.bootstrapRenderer.prototype, rendererDefaultExtension);
 	
 	// Extend jQuery
 	$.fn.pagination = function(maxentries, opts){
